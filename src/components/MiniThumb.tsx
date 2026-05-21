@@ -13,7 +13,8 @@ const key = (id: string, idx: number) => `${id}#${idx}`;
 export default function MiniThumb({ slot, docs }: Props) {
   const effective = slot.replacedBy ?? slot;
   const doc = docs.find((d) => d.id === effective.srcDocId);
-  const cacheKey = doc ? key(doc.id, effective.srcPageIndex) : "";
+  const rotation = slot.rotation ?? 0;
+  const cacheKey = doc ? `${key(doc.id, effective.srcPageIndex)}@${rotation}` : "";
   const initial = cacheKey ? cache.get(cacheKey) ?? null : null;
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -40,7 +41,7 @@ export default function MiniThumb({ slot, docs }: Props) {
     if (cached) { setSrc(cached); return; }
     if (!visible) return;
     let cancelled = false;
-    const h = renderThumbnailHandle(doc.pdf, effective.srcPageIndex, 110);
+    const h = renderThumbnailHandle(doc.pdf, effective.srcPageIndex, 110, rotation);
     h.promise
       .then((url) => {
         cache.set(cacheKey, url);
@@ -51,7 +52,7 @@ export default function MiniThumb({ slot, docs }: Props) {
       cancelled = true;
       h.cancel();
     };
-  }, [doc, effective.srcPageIndex, cacheKey, visible]);
+  }, [doc, effective.srcPageIndex, rotation, cacheKey, visible]);
 
   return (
     <div ref={wrapRef} className={`mini-page-thumb${slot.replacedBy ? " replaced" : ""}`}>

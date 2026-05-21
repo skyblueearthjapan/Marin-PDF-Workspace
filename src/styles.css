@@ -194,6 +194,7 @@ input, select { font: inherit; }
 .mode-tab.m-split   { --c1:#c4eed8; --c2:#8ed8b1; --c-deep:#427a5c; }
 .mode-tab.m-print   { --c1:#d9ceff; --c2:#b8a4f5; --c-deep:#6b4fb8; }
 .mode-tab.m-replace { --c1:#fde6a8; --c2:#f4c873; --c-deep:#a8761f; }
+.mode-tab.m-rotate  { --c1:#fbcdd6; --c2:#f5a3b3; --c-deep:#b04356; }
 
 .top-spacer { flex: 1; }
 
@@ -362,6 +363,11 @@ input, select { font: inherit; }
   color: #a8761f; font-size: 10px; font-weight: 700;
   padding: 3px 8px; border-radius: 999px;
   box-shadow: 0 4px 10px -2px rgba(244,200,115,0.5);
+}
+.page-badge-pill.rot {
+  background: linear-gradient(140deg, var(--c-rose-1), var(--c-rose-2));
+  color: var(--c-rose-deep);
+  box-shadow: 0 4px 10px -2px rgba(245,163,179,0.5);
 }
 
 /* Section dividers */
@@ -824,6 +830,19 @@ input, select { font: inherit; }
     0 8px 20px -8px rgba(142,216,177,0.55);
 }
 .btn.split:hover { filter: brightness(1.02); transform: translateY(-0.5px); }
+
+.btn.rotate {
+  background: linear-gradient(180deg, var(--c-rose-1) 0%, var(--c-rose-2) 100%);
+  color: var(--c-rose-deep);
+  font-weight: 600;
+  border-color: rgba(176,67,86,0.18);
+  box-shadow:
+    inset 0 0.5px 0 rgba(255,255,255,0.7),
+    inset 0 -1px 0 rgba(176,67,86,0.12),
+    0 1px 2px rgba(176,67,86,0.08),
+    0 8px 20px -8px rgba(245,163,179,0.55);
+}
+.btn.rotate:hover { filter: brightness(1.02); transform: translateY(-0.5px); }
 
 .btn.ghost {
   background: transparent;

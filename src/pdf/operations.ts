@@ -59,8 +59,12 @@ async function appendSlots(out: PDFDocument, slots: PageSlot[], sources: Map<str
     }
     const copied: PDFPage[] = await out.copyPages(src, indices);
     copied.forEach((page, k) => {
-      const rot = rotations[k];
-      if (rot) page.setRotation(degrees(rot));
+      const userRot = rotations[k] ?? 0;
+      if (userRot) {
+        const current = page.getRotation().angle;
+        const total = (((current + userRot) % 360) + 360) % 360;
+        page.setRotation(degrees(total));
+      }
       out.addPage(page);
     });
     i = j;

@@ -11,12 +11,13 @@ import { loadPdf } from "./pdf/renderer";
 import { buildComposite, buildSplitSegments, downloadBlob, downloadBytes, zipSegments } from "./pdf/operations";
 import { printPdfBytes } from "./pdf/print";
 
-const MODES: { id: ModeId; label: string; icon: "view" | "merge" | "split" | "print" | "replace" }[] = [
+const MODES: { id: ModeId; label: string; icon: "view" | "merge" | "split" | "print" | "replace" | "rotate" }[] = [
   { id: "view",    label: "閲覧", icon: "view" },
   { id: "merge",   label: "結合", icon: "merge" },
   { id: "split",   label: "分割", icon: "split" },
   { id: "print",   label: "印刷", icon: "print" },
   { id: "replace", label: "差替", icon: "replace" },
+  { id: "rotate",  label: "回転", icon: "rotate" },
 ];
 
 const ACCENTS = ["#f5a3b3", "#fbbb98", "#8ed8b1", "#b8a4f5", "#f4c873"];
@@ -49,6 +50,7 @@ export default function App() {
   const [splitAfter, setSplitAfter] = useState<number[]>([]);
   const [printOff, setPrintOff] = useState<Set<number>>(new Set());
   const [replaceTarget, setReplaceTarget] = useState<number | null>(null);
+  const [rotateSelected, setRotateSelected] = useState<Set<number>>(new Set());
 
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -181,6 +183,7 @@ export default function App() {
     if (mode === "split") setSplitAfter([]);
     if (mode === "print") setPrintOff(new Set());
     if (mode === "replace") setReplaceTarget(null);
+    if (mode === "rotate") setRotateSelected(new Set());
   }, [mode]);
 
   // -- Track viewer width (for full-fit PDF rendering)
@@ -409,6 +412,48 @@ export default function App() {
     setMode("view");
   };
 
+  // -- Rotation
+  const toggleRotateSelect = (idx: number) => {
+    setRotateSelected((prev) => {
+      const s = new Set(prev);
+      if (s.has(idx)) s.delete(idx); else s.add(idx);
+      return s;
+    });
+  };
+
+  const applyRotation = (deltaDeg: number) => {
+    if (slots.length === 0) return;
+    const targets = rotateSelected.size > 0
+      ? rotateSelected
+      : new Set(slots.map((_, i) => i));
+    pushHistory();
+    setSlots((prev) => prev.map((slot, i) => {
+      if (!targets.has(i)) return slot;
+      const next = ((((slot.rotation ?? 0) + deltaDeg) % 360) + 360) % 360;
+      const out = { ...slot } as typeof slot;
+      if (next === 0) delete out.rotation; else out.rotation = next;
+      return out;
+    }));
+    const dir = deltaDeg === 180 ? "180°" : `${deltaDeg > 0 ? "右" : "左"}${Math.abs(deltaDeg)}°`;
+    const scope = rotateSelected.size > 0 ? `${rotateSelected.size}ページ` : "全ページ";
+    showToast(`${scope}を ${dir} 回転しました`);
+  };
+
+  const resetRotation = () => {
+    if (slots.length === 0) return;
+    const targets = rotateSelected.size > 0
+      ? rotateSelected
+      : new Set(slots.map((_, i) => i));
+    pushHistory();
+    setSlots((prev) => prev.map((slot, i) => {
+      if (!targets.has(i) || !slot.rotation) return slot;
+      const out = { ...slot } as typeof slot;
+      delete out.rotation;
+      return out;
+    }));
+    showToast(`${rotateSelected.size > 0 ? rotateSelected.size + "ページ" : "全ページ"}の回転をリセットしました`);
+  };
+
   const deleteAll = () => {
     if (!confirm("読み込んだPDFをすべて破棄しますか?")) return;
     pushHistory();
@@ -590,6 +635,7 @@ export default function App() {
               splitCount={splitAfter.length}
               printCount={slots.length - printOff.size}
               replaceTarget={replaceTarget}
+              rotateCount={rotateSelected.size}
             />
             <div className="viewer-scroll" ref={scrollRef}>
               <div
@@ -631,18 +677,26 @@ export default function App() {
                         pageNumber={i + 1}
                         totalPages={slots.length}
                         sourceLabel={mergedSections ? docById(slot.srcDocId)?.name.replace(/\.pdf$/i, "") : null}
-                        selectable={mode === "replace" || mode === "print"}
-                        selected={mode === "replace" && replaceTarget === i}
+                        selectable={mode === "replace" || mode === "print" || mode === "rotate"}
+                        selected={
+                          (mode === "replace" && replaceTarget === i) ||
+                          (mode === "rotate" && rotateSelected.has(i))
+                        }
                         replacing={mode === "replace" && replaceTarget === i}
                         dimmed={mode === "print" && printOff.has(i)}
                         hideForPrint={mode === "print" && printOff.has(i)}
                         onClick={() => {
                           if (mode === "replace") handleReplaceTargetClick(i);
                           else if (mode === "print") togglePrintExclude(i);
+                          else if (mode === "rotate") toggleRotateSelect(i);
                         }}
-                        badge={slot.replacedBy ? (
-                          <span className="page-badge-pill">差し替え済</span>
-                        ) : null}
+                        badge={
+                          slot.replacedBy ? (
+                            <span className="page-badge-pill">差し替え済</span>
+                          ) : slot.rotation ? (
+                            <span className="page-badge-pill rot">↻ {slot.rotation}°</span>
+                          ) : null
+                        }
                       />
 
                       {mode === "replace" && replaceTarget === i && (
@@ -748,6 +802,11 @@ export default function App() {
         onClearAllPrint={() => setPrintOff(new Set(slots.map((_, i) => i)))}
         onSplitAll={() => setSplitAfter(Array.from({ length: Math.max(0, slots.length - 1) }, (_, i) => i))}
         onSplitClear={() => setSplitAfter([])}
+        rotateSelected={rotateSelected}
+        onRotate={applyRotation}
+        onRotateReset={resetRotation}
+        onRotateSelectAll={() => setRotateSelected(new Set(slots.map((_, i) => i)))}
+        onRotateClearSelection={() => setRotateSelected(new Set())}
       />
 
       {/* Toasts */}
@@ -787,16 +846,20 @@ function PageBlock({ children }: { index: number; children: React.ReactNode }) {
 }
 
 function ModeHint({
-  mode, mergeCount, splitCount, printCount, replaceTarget,
+  mode, mergeCount, splitCount, printCount, replaceTarget, rotateCount,
 }: {
-  mode: ModeId; mergeCount: number; splitCount: number; printCount: number; replaceTarget: number | null;
+  mode: ModeId; mergeCount: number; splitCount: number; printCount: number; replaceTarget: number | null; rotateCount: number;
 }) {
   if (mode === "view") return null;
-  const map: Record<Exclude<ModeId, "view">, { label: string; icon: "merge" | "split" | "print" | "replace" }> = {
+  const map: Record<Exclude<ModeId, "view">, { label: string; icon: "merge" | "split" | "print" | "replace" | "rotate" }> = {
     merge:   { label: `結合キューにファイルを追加して順序を決めます (${mergeCount} 件選択中)`, icon: "merge" },
     split:   { label: `ページの間にカーソルを合わせて分割位置を指定 (${splitCount} 箇所)`, icon: "split" },
     print:   { label: `印刷したくないページをクリックして除外 (${printCount} ページが印刷対象)`, icon: "print" },
     replace: { label: replaceTarget === null ? "差し替えたいページをクリックして選択" : "下のピッカーから差し替え後のページを選択", icon: "replace" },
+    rotate:  { label: rotateCount > 0
+                ? `${rotateCount} ページ選択中 ・ 下の回転ボタンで適用`
+                : "回転するページをクリック(未選択時は全ページ対象)",
+               icon: "rotate" },
   };
   const m = map[mode];
   return (
@@ -823,6 +886,7 @@ function ActionBar({
   hasFile, mode, mergeOrder, splitAfter, printOff, pageCount, currentPage,
   onConfirmMerge, onConfirmSplit, onConfirmPrint, onDownload, onCancel, replaceTarget,
   onSelectAllPrint, onClearAllPrint, onSplitAll, onSplitClear,
+  rotateSelected, onRotate, onRotateReset, onRotateSelectAll, onRotateClearSelection,
 }: {
   hasFile: boolean;
   mode: ModeId;
@@ -841,6 +905,11 @@ function ActionBar({
   onClearAllPrint: () => void;
   onSplitAll: () => void;
   onSplitClear: () => void;
+  rotateSelected: Set<number>;
+  onRotate: (delta: number) => void;
+  onRotateReset: () => void;
+  onRotateSelectAll: () => void;
+  onRotateClearSelection: () => void;
 }) {
   const themes: Record<ModeId, { bg: string; color: string }> = {
     view:    { bg: "linear-gradient(140deg,#efece8,#c8c3bd)", color: "#57534e" },
@@ -848,6 +917,7 @@ function ActionBar({
     split:   { bg: "linear-gradient(140deg,#c4eed8,#8ed8b1)", color: "#427a5c" },
     print:   { bg: "linear-gradient(140deg,#d9ceff,#b8a4f5)", color: "#6b4fb8" },
     replace: { bg: "linear-gradient(140deg,#fde6a8,#f4c873)", color: "#a8761f" },
+    rotate:  { bg: "linear-gradient(140deg,#fbcdd6,#f5a3b3)", color: "#b04356" },
   };
 
   if (!hasFile) {
@@ -948,6 +1018,36 @@ function ActionBar({
         />
         <div className="action-spacer" />
         <button className="btn ghost" onClick={onCancel}>キャンセル</button>
+      </div>
+    );
+  }
+  if (mode === "rotate") {
+    const n = rotateSelected.size;
+    const scopeLabel = n > 0 ? `${n} ページ` : "全ページ";
+    return (
+      <div className="actionbar">
+        <Lead kind="rotate" label="回転モード" body={<>{scopeLabel}に適用</>} />
+        <div className="action-spacer" />
+        <button
+          className="btn ghost"
+          onClick={n > 0 ? onRotateClearSelection : onRotateSelectAll}
+          disabled={pageCount === 0}
+        >
+          {n > 0 ? "選択解除" : "全選択"}
+        </button>
+        <button className="btn ghost" onClick={onRotateReset} disabled={pageCount === 0}>
+          回転リセット
+        </button>
+        <button className="btn ghost" onClick={onCancel}>キャンセル</button>
+        <button className="btn rotate" onClick={() => onRotate(-90)} disabled={pageCount === 0}>
+          ↺ 左90°
+        </button>
+        <button className="btn rotate" onClick={() => onRotate(180)} disabled={pageCount === 0}>
+          ↻ 180°
+        </button>
+        <button className="btn rotate" onClick={() => onRotate(90)} disabled={pageCount === 0}>
+          ↻ 右90°
+        </button>
       </div>
     );
   }

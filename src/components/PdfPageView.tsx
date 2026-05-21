@@ -38,6 +38,7 @@ export default function PdfPageView({
 
   const effective = slot.replacedBy ?? slot;
   const targetDoc = docs.find((d) => d.id === effective.srcDocId);
+  const rotation = slot.rotation ?? 0;
 
   // Visibility observer — render only when nearby, evict canvas when far.
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function PdfPageView({
       pageIndex: effective.srcPageIndex,
       maxWidthCss: pageWidthCss,
       canvas,
+      rotation,
     });
     let cancelled = false;
     handle.promise
@@ -89,7 +91,7 @@ export default function PdfPageView({
       cancelled = true;
       handle.cancel();
     };
-  }, [targetDoc, effective.srcPageIndex, pageWidthCss, inView]);
+  }, [targetDoc, effective.srcPageIndex, pageWidthCss, rotation, inView]);
 
   const cls = [
     "pdf-page",

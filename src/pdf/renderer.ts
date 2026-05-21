@@ -15,6 +15,8 @@ export interface RenderOptions {
   pixelRatio?: number;
   maxWidthCss?: number;
   canvas?: HTMLCanvasElement;
+  /** Extra rotation in degrees applied on TOP of the page's stored rotation. */
+  rotation?: number;
 }
 
 export interface RenderResult {
@@ -41,6 +43,7 @@ export function renderPage(
     pixelRatio = window.devicePixelRatio || 1,
     maxWidthCss,
     canvas,
+    rotation = 0,
   }: RenderOptions
 ): RenderHandle {
   let task: pdfjsLib.RenderTask | null = null;
@@ -52,12 +55,13 @@ export function renderPage(
       page.cleanup();
       throw new DOMException("cancelled", "AbortError");
     }
+    const finalRotation = (((page.rotate ?? 0) + rotation) % 360 + 360) % 360;
     let chosenScale = scale ?? 1;
     if (maxWidthCss != null) {
-      const baseVp = page.getViewport({ scale: 1 });
+      const baseVp = page.getViewport({ scale: 1, rotation: finalRotation });
       chosenScale = maxWidthCss / baseVp.width;
     }
-    const viewport = page.getViewport({ scale: chosenScale * pixelRatio });
+    const viewport = page.getViewport({ scale: chosenScale * pixelRatio, rotation: finalRotation });
     const cssWidth = viewport.width / pixelRatio;
     const cssHeight = viewport.height / pixelRatio;
     const target = canvas ?? document.createElement("canvas");
@@ -105,9 +109,10 @@ export interface ThumbHandle {
 export function renderThumbnailHandle(
   pdf: pdfjsLib.PDFDocumentProxy,
   pageIndex: number,
-  width = 110
+  width = 110,
+  rotation = 0
 ): ThumbHandle {
-  const h = renderPage(pdf, { pageIndex, maxWidthCss: width, pixelRatio: 1.5 });
+  const h = renderPage(pdf, { pageIndex, maxWidthCss: width, pixelRatio: 1.5, rotation });
   const promise = h.promise.then(({ canvas }) => {
     const url = canvas.toDataURL("image/png");
     // Release the temporary canvas's GPU memory eagerly.
