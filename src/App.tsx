@@ -37,12 +37,6 @@ export default function App() {
   const [mode, setMode] = useState<ModeId>("view");
   const [zoom, setZoom] = useState<ZoomPercent>(ZOOM_DEFAULT);
 
-  const adjustZoom = (delta: number) => {
-    setZoom((z) => {
-      const next = Math.round((z + delta) / ZOOM_STEP) * ZOOM_STEP;
-      return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
-    });
-  };
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -130,6 +124,35 @@ export default function App() {
 
   const docById = useCallback((id: string) => docs.find((d) => d.id === id), [docs]);
 
+  // Set zoom AND scroll the currently-visible page back into view after the
+  // layout settles. Without this, scrollTop stays put but the page positions
+  // change underneath it, so the user appears to "jump" to a different page.
+  const setZoomPreservePage = useCallback((nextZoom: number) => {
+    const targetIdx = Math.max(0, currentPage - 1);
+    setZoom(nextZoom);
+    scrollLockUntilRef.current = Date.now() + 600;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const pages = el.querySelectorAll<HTMLDivElement>(".pdf-page");
+        const tgt = pages[targetIdx];
+        if (!tgt) return;
+        scrollLockUntilRef.current = Date.now() + 500;
+        el.scrollTo({ top: tgt.offsetTop - 24, behavior: "auto" });
+      });
+    });
+  }, [currentPage]);
+
+  const adjustZoom = (delta: number) => {
+    const next = Math.min(
+      ZOOM_MAX,
+      Math.max(ZOOM_MIN, Math.round((zoom + delta) / ZOOM_STEP) * ZOOM_STEP)
+    );
+    if (next === zoom) return;
+    setZoomPreservePage(next);
+  };
+
   // Smart fit: size the current page so its height fits the viewer height.
   // Applies to both portrait and landscape — landscape pages get a smaller
   // zoom %, portrait pages get a larger one, both end up height-aligned.
@@ -159,11 +182,12 @@ export default function App() {
       let target = (usableH * pw) / (viewerWidth * ph) * 100;
       target = Math.round(target / ZOOM_STEP) * ZOOM_STEP;
       target = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, target));
-      setZoom(target);
+      if (target === zoom) return;
+      setZoomPreservePage(target);
     } catch (e) {
       console.error("fit failed", e);
     }
-  }, [slots, currentPage, docById, viewerWidth]);
+  }, [slots, currentPage, docById, viewerWidth, zoom, setZoomPreservePage]);
 
   // -- File loading
   const ingestFiles = useCallback(async (files: FileList | File[] | null, opts?: { replaceCurrent?: boolean }) => {
@@ -779,7 +803,7 @@ export default function App() {
               </button>
               <div style={{ width: 1, height: 18, background: "#e8f0f9", margin: "0 2px" }} />
               <button
-                onClick={() => setZoom(ZOOM_DEFAULT)}
+                onClick={() => setZoomPreservePage(ZOOM_DEFAULT)}
                 className="tt zoom-fit"
                 data-tt="幅にフィット"
                 disabled={zoom === ZOOM_DEFAULT}
