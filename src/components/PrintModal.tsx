@@ -12,7 +12,7 @@ type RangeMode = "all" | "current" | "custom";
 
 function parseRange(text: string, total: number): number[] {
   // Accept "1-5, 8, 10-15" with hyphen/dash/Japanese variations
-  const parts = text.split(/[,、，\s]+/).filter(Boolean);
+  const parts = text.split(/[,、,\s]+/).filter(Boolean);
   const result = new Set<number>();
   for (const part of parts) {
     const m = part.match(/^(\d+)(?:[-－–—〜~](\d+))?$/);
@@ -24,6 +24,35 @@ function parseRange(text: string, total: number): number[] {
     for (let i = lo; i <= hi; i++) result.add(i - 1);
   }
   return Array.from(result).sort((x, y) => x - y);
+}
+
+/** Collapse a sorted list of 0-based indices into a human range string ("1-3, 5, 8-10"). */
+function compressRange(indices: number[]): string {
+  if (indices.length === 0) return "なし";
+  const sorted = [...indices].sort((a, b) => a - b);
+  const parts: string[] = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+  for (let i = 1; i <= sorted.length; i++) {
+    if (i === sorted.length || sorted[i] !== prev + 1) {
+      parts.push(start === prev ? `${start + 1}` : `${start + 1}-${prev + 1}`);
+      if (i < sorted.length) {
+        start = sorted[i];
+        prev = sorted[i];
+      }
+    } else {
+      prev = sorted[i];
+    }
+  }
+  return parts.join(", ");
+}
+
+function compressRangeTruncated(indices: number[], maxLen = 240): string {
+  const full = compressRange(indices);
+  if (full.length <= maxLen) return full;
+  const cut = full.slice(0, maxLen);
+  const lastComma = cut.lastIndexOf(",");
+  return (lastComma > 0 ? cut.slice(0, lastComma) : cut) + " ...";
 }
 
 export default function PrintModal({ totalPages, currentPage, printOff, onCancel, onPrint }: Props) {
@@ -43,6 +72,7 @@ export default function PrintModal({ totalPages, currentPage, printOff, onCancel
   }, [rangeMode, customText, totalPages, currentPage, printOff]);
 
   const willPrint = selectedIndices.length;
+  const targetRangeText = useMemo(() => compressRangeTruncated(selectedIndices), [selectedIndices]);
 
   return (
     <div className="modal-veil" onClick={onCancel}>
@@ -50,6 +80,21 @@ export default function PrintModal({ totalPages, currentPage, printOff, onCancel
         <h3>印刷プレビュー</h3>
         <div style={{ fontSize: 13, color: "#78716c", marginTop: -8 }}>
           範囲を選んでブラウザのプレビューに送信します
+        </div>
+
+        <div className={`print-target${willPrint === 0 ? " empty" : ""}`}>
+          <div className="pt-head">
+            <span className="pt-label">この範囲で印刷します</span>
+            <span className="pt-count">{willPrint} / {totalPages} ページ</span>
+          </div>
+          <div className="pt-value">
+            {willPrint === 0 ? "印刷対象がありません" : `p. ${targetRangeText}`}
+          </div>
+          {printOff.size > 0 && (
+            <div className="pt-note">
+              印刷モードで除外された {printOff.size} ページは自動で除外されています
+            </div>
+          )}
         </div>
 
         <div className="print-range">
@@ -94,20 +139,6 @@ export default function PrintModal({ totalPages, currentPage, printOff, onCancel
             />
           )}
         </div>
-
-        <div className="modal-row">
-          <span>印刷ページ数</span>
-          <strong style={{ color: "#6b4fb8", fontVariantNumeric: "tabular-nums" }}>
-            {willPrint} / {totalPages} ページ
-          </strong>
-        </div>
-
-        {printOff.size > 0 && (
-          <div className="modal-row" style={{ fontSize: 12, color: "#a8a29e" }}>
-            <span>除外設定</span>
-            <span>{printOff.size} ページが「印刷対象外」</span>
-          </div>
-        )}
 
         <div className="modal-foot">
           <button className="btn ghost" onClick={onCancel}>キャンセル</button>

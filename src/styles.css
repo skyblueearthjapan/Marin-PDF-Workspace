@@ -1306,6 +1306,64 @@ input, select { font: inherit; }
 }
 .modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px; }
 
+/* Print target summary — the actual range that will be sent to preview */
+.print-target {
+  display: flex; flex-direction: column;
+  gap: 6px;
+  background: linear-gradient(180deg, rgba(217,206,255,0.32) 0%, rgba(217,206,255,0.08) 100%);
+  border: 1px solid rgba(184,164,245,0.55);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 6px 18px -10px rgba(107,79,184,0.3);
+}
+.print-target.empty {
+  background: rgba(28,25,23,0.04);
+  border-color: var(--line);
+  box-shadow: none;
+}
+.print-target .pt-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+}
+.print-target .pt-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--c-lav-deep);
+}
+.print-target.empty .pt-label { color: var(--ink-500); }
+.print-target .pt-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-lav-deep);
+  font-variant-numeric: tabular-nums;
+  background: white;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(184,164,245,0.45);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.print-target.empty .pt-count {
+  color: var(--ink-500);
+  border-color: var(--line);
+}
+.print-target .pt-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-900);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.print-target.empty .pt-value { color: var(--ink-500); font-weight: 500; }
+.print-target .pt-note {
+  font-size: 11px;
+  color: var(--c-lav-deep);
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
 /* Print range picker (radio cards) */
 .print-range {
   display: flex; flex-direction: column; gap: 6px;
