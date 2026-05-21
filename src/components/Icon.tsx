@@ -3,7 +3,8 @@ import type { CSSProperties, ReactNode } from "react";
 export type IconName =
   | "view" | "merge" | "split" | "print" | "replace"
   | "plus" | "check" | "upload" | "download" | "scissor"
-  | "arrowRight" | "arrowLeft" | "zoomIn" | "zoomOut" | "rotate"
+  | "arrowRight" | "arrowLeft" | "arrowUp" | "arrowDown"
+  | "zoomIn" | "zoomOut" | "rotate"
   | "settings" | "help" | "trash" | "close" | "grip" | "search"
   | "undo" | "redo";
 
@@ -34,6 +35,8 @@ export default function Icon({ name, className = "ic", style }: Props) {
     scissor: <><circle cx="6" cy="6" r="3" {...common}/><circle cx="6" cy="18" r="3" {...common}/><path d="M20 4 8.5 15.5M14 12l6 8M8.5 8.5 14 12" {...common}/></>,
     arrowRight: <><path d="M5 12h14M13 6l6 6-6 6" {...common}/></>,
     arrowLeft: <><path d="M19 12H5M11 18l-6-6 6-6" {...common}/></>,
+    arrowUp: <><path d="M12 19V5M6 11l6-6 6 6" {...common}/></>,
+    arrowDown: <><path d="M12 5v14M6 13l6 6 6-6" {...common}/></>,
     zoomIn: <><circle cx="11" cy="11" r="6" {...common}/><path d="m20 20-3.5-3.5M8 11h6M11 8v6" {...common}/></>,
     zoomOut: <><circle cx="11" cy="11" r="6" {...common}/><path d="m20 20-3.5-3.5M8 11h6" {...common}/></>,
     rotate: <><path d="M21 12a9 9 0 1 1-3-6.7" {...common}/><path d="M21 4v5h-5" {...common}/></>,

@@ -101,12 +101,23 @@ export default function App() {
   const canUndo = history.length > 0;
   const canRedo = future.length > 0;
 
-  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z = redo
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z = redo,
+  // PageUp / PageDown = previous / next page
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      if (e.key === "PageUp") {
+        e.preventDefault();
+        if (currentPage > 1) jumpToPage(currentPage - 2);
+        return;
+      }
+      if (e.key === "PageDown") {
+        e.preventDefault();
+        if (currentPage < slots.length) jumpToPage(currentPage);
+        return;
+      }
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
       const k = e.key.toLowerCase();
@@ -120,7 +131,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, canUndo, canRedo]);
+  }, [undo, redo, canUndo, canRedo, currentPage, slots.length]);
 
   const docById = useCallback((id: string) => docs.find((d) => d.id === id), [docs]);
 
@@ -781,6 +792,28 @@ export default function App() {
                   );
                 })}
               </div>
+            </div>
+
+            <div className="nav-rail">
+              <button
+                onClick={() => jumpToPage(Math.max(0, currentPage - 2))}
+                className="tt"
+                data-tt="前のページ (PageUp)"
+                disabled={currentPage <= 1}
+              >
+                <Icon name="arrowUp" className="ic" />
+              </button>
+              <div className="nav-page-indicator">
+                {currentPage} / {slots.length}
+              </div>
+              <button
+                onClick={() => jumpToPage(Math.min(slots.length - 1, currentPage))}
+                className="tt"
+                data-tt="次のページ (PageDown)"
+                disabled={currentPage >= slots.length}
+              >
+                <Icon name="arrowDown" className="ic" />
+              </button>
             </div>
 
             <div className="zoom-rail">

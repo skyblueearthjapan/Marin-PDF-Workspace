@@ -1189,6 +1189,41 @@ input, select { font: inherit; }
   color: white;
 }
 
+/* Page navigation rail (sits just above the zoom rail) */
+.nav-rail {
+  position: absolute; right: 16px; bottom: 64px;
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px;
+  display: flex; align-items: center; gap: 2px;
+  z-index: 5;
+  box-shadow: var(--shadow-float);
+}
+.nav-rail button {
+  border: none; background: transparent;
+  width: 32px; height: 32px; border-radius: 999px;
+  display: grid; place-items: center;
+  color: var(--ink-700); cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: 140ms ease;
+}
+.nav-rail button:hover:not(:disabled) {
+  background: rgba(251,205,214,0.25);
+  color: var(--accent-deep);
+}
+.nav-rail button:disabled { opacity: 0.3; cursor: not-allowed; }
+.nav-rail .nav-page-indicator {
+  font-size: 12px;
+  padding: 0 10px;
+  color: var(--ink-700);
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+  text-align: center;
+  font-weight: 600;
+}
+
 /* Zoom rail */
 .zoom-rail {
   position: absolute; right: 16px; bottom: 16px;
