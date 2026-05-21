@@ -442,16 +442,15 @@ export default function App() {
     });
   };
 
-  const printActive = async () => {
+  const printActive = async (pageIndices: number[]) => {
     if (!hasFile) return;
-    const keepIdx = slots.map((_, i) => i).filter((i) => !printOff.has(i));
-    if (keepIdx.length === 0) { showToast("印刷するページがありません"); return; }
+    if (pageIndices.length === 0) { showToast("印刷するページがありません"); return; }
     setBusy("印刷データを生成中…");
     try {
-      const filteredSlots = keepIdx.map((i) => slots[i]);
+      const filteredSlots = pageIndices.map((i) => slots[i]);
       const bytes = await buildComposite({ docs, slots: filteredSlots });
       printPdfBytes(bytes, deriveFilename("print"));
-      showToast(`${keepIdx.length} ページを印刷キューに送信しました`);
+      showToast(`${pageIndices.length} ページをプレビューに送信しました`);
       setShowPrintModal(false);
       setMode("view");
     } catch (e) {
@@ -923,7 +922,8 @@ export default function App() {
       {showPrintModal && (
         <PrintModal
           totalPages={slots.length}
-          excludeCount={printOff.size}
+          currentPage={currentPage}
+          printOff={printOff}
           onCancel={() => setShowPrintModal(false)}
           onPrint={printActive}
         />

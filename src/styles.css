@@ -1306,6 +1306,58 @@ input, select { font: inherit; }
 }
 .modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding-top: 8px; }
 
+/* Print range picker (radio cards) */
+.print-range {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.print-range .range-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  background: white;
+  transition: 140ms ease;
+  font-size: 13px;
+  color: var(--ink-700);
+}
+.print-range .range-opt:hover { border-color: var(--c-lav-2); background: #fdfdff; }
+.print-range .range-opt.active {
+  border-color: var(--c-lav-2);
+  background: linear-gradient(180deg, rgba(217,206,255,0.18), rgba(217,206,255,0.06));
+  color: var(--ink-900);
+  box-shadow: 0 4px 14px -10px rgba(107,79,184,0.4);
+}
+.print-range .range-opt input[type="radio"] {
+  accent-color: var(--c-lav-deep);
+  width: 16px; height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.range-opt-label { flex: 1; font-weight: 500; }
+.range-opt-meta {
+  font-size: 11px; color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
+}
+.range-opt.active .range-opt-meta { color: var(--c-lav-deep); }
+.range-input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 12px;
+  border: 1px solid var(--c-lav-2);
+  border-radius: 9px;
+  background: white;
+  color: var(--ink-900);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: 140ms ease;
+}
+.range-input:focus {
+  border-color: var(--c-lav-deep);
+  box-shadow: 0 0 0 3px rgba(184,164,245,0.25);
+}
+
 /* Busy overlay */
 .busy-veil {
   position: fixed; inset: 0;
