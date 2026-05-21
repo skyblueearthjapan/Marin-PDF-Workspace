@@ -833,6 +833,11 @@ export default function App() {
           printOff={printOff}
           onTogglePrint={togglePrintExclude}
           splitAfter={splitAfter}
+          onToggleSplit={(i) =>
+            setSplitAfter((prev) =>
+              prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i].sort((a, b) => a - b)
+            )
+          }
           replaceTarget={replaceTarget}
           sourceLabelFor={sourceLabelFor}
           listRef={thumbListRef}

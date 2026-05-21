@@ -12,6 +12,7 @@ interface Props {
   printOff: Set<number>;
   onTogglePrint: (idx: number) => void;
   splitAfter: number[];
+  onToggleSplit: (idx: number) => void;
   replaceTarget: number | null;
   sourceLabelFor: (idx: number) => string;
   listRef?: RefObject<HTMLDivElement>;
@@ -20,9 +21,10 @@ interface Props {
 
 export default function Thumbpane({
   slots, docs, currentPage, onJump, mode, printOff, onTogglePrint,
-  splitAfter, replaceTarget, sourceLabelFor, listRef, onListScroll,
+  splitAfter, onToggleSplit, replaceTarget, sourceLabelFor, listRef, onListScroll,
 }: Props) {
   const checking = mode === "print";
+  const splitting = mode === "split";
   return (
     <div className="thumbpane">
       <div className="thumbpane-head">
@@ -34,12 +36,18 @@ export default function Thumbpane({
           const cur = currentPage === i + 1;
           const off = printOff.has(i);
           const splitAfterThis = splitAfter.includes(i);
+          const canSplit = splitting && i < slots.length - 1;
           const isTarget = replaceTarget === i;
           return (
             <div
               key={i}
-              className={`thumb-card${cur ? " current" : ""}${checking ? " checking" : ""}${splitAfterThis ? " split-after" : ""}`}
-              onClick={() => { if (checking) onTogglePrint(i); else onJump(i); }}
+              className={`thumb-card${cur ? " current" : ""}${checking ? " checking" : ""}${canSplit ? " split-toggle" : ""}${splitAfterThis && canSplit ? " split-after" : ""}`}
+              onClick={() => {
+                if (checking) onTogglePrint(i);
+                else if (canSplit) onToggleSplit(i);
+                else onJump(i);
+              }}
+              title={canSplit ? "クリックでここで分割" : undefined}
               style={isTarget ? { borderColor: "rgba(244,200,115,0.6)", background: "rgba(254,243,199,0.4)" } : undefined}
             >
               <MiniThumb slot={slot} docs={docs} />
@@ -50,6 +58,11 @@ export default function Thumbpane({
               {checking && (
                 <div className={`tcheck${!off ? " on" : ""}`}>
                   {!off && <Icon name="check" className="ic" style={{ width: 11, height: 11 }} />}
+                </div>
+              )}
+              {canSplit && (
+                <div className={`tscissor${splitAfterThis ? " on" : ""}`} aria-hidden="true">
+                  <Icon name="scissor" className="ic" style={{ width: 11, height: 11 }} />
                 </div>
               )}
             </div>
