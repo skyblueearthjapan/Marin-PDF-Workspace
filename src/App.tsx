@@ -507,7 +507,7 @@ export default function App() {
             onClick={undo}
             disabled={!canUndo}
           >
-            <Icon name="undo" className="ic ic-sm" />
+            <Icon name="undo" className="ic" />
           </button>
           <button
             className="icon-btn tt"
@@ -515,18 +515,18 @@ export default function App() {
             onClick={redo}
             disabled={!canRedo}
           >
-            <Icon name="redo" className="ic ic-sm" />
+            <Icon name="redo" className="ic" />
           </button>
           {hasFile && (
             <button className="delete-btn tt" data-tt="ファイルを削除" onClick={deleteAll}>
-              <Icon name="trash" className="ic ic-sm" />削除
+              <Icon name="trash" className="ic" />削除
             </button>
           )}
           <button className="icon-btn tt" data-tt="ダウンロード" onClick={downloadCurrent} disabled={!hasFile}>
-            <Icon name="download" className="ic ic-sm" />
+            <Icon name="download" className="ic" />
           </button>
           <button className="icon-btn tt" data-tt="設定">
-            <Icon name="settings" className="ic ic-sm" />
+            <Icon name="settings" className="ic" />
           </button>
         </div>
       </div>
