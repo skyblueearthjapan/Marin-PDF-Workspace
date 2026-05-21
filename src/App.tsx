@@ -130,8 +130,9 @@ export default function App() {
 
   const docById = useCallback((id: string) => docs.find((d) => d.id === id), [docs]);
 
-  // Smart fit: fit the current page so its longer side hugs the viewer edge.
-  // Portrait pages → fit height (page bottom/top aligned). Landscape → fit width.
+  // Smart fit: size the current page so its height fits the viewer height.
+  // Applies to both portrait and landscape — landscape pages get a smaller
+  // zoom %, portrait pages get a larger one, both end up height-aligned.
   const fitCurrentPage = useCallback(async () => {
     if (slots.length === 0) return;
     const slot = slots[Math.max(0, currentPage - 1)];
@@ -153,14 +154,9 @@ export default function App() {
       // Reserve breathing room (top mode-hint banner + page bottom margin)
       const usableH = Math.max(200, viewerH - 80);
 
-      let target: number;
-      if (pw >= ph) {
-        // Landscape: fit the viewer width exactly.
-        target = 100;
-      } else {
-        // Portrait: shrink so page height ≈ viewer height.
-        target = (usableH * pw) / (viewerWidth * ph) * 100;
-      }
+      // Fit height: find the zoom % that makes rendered page height ≈ usableH.
+      // rendered_h = viewerWidth * (zoom/100) * (ph/pw)  ⇒  zoom = usableH * pw / (viewerWidth * ph) * 100
+      let target = (usableH * pw) / (viewerWidth * ph) * 100;
       target = Math.round(target / ZOOM_STEP) * ZOOM_STEP;
       target = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, target));
       setZoom(target);
@@ -793,7 +789,7 @@ export default function App() {
               <button
                 onClick={fitCurrentPage}
                 className="tt zoom-fit zoom-smart"
-                data-tt="現在のページに自動フィット (縦は高さ・横は幅)"
+                data-tt="現在のページの高さを画面にフィット"
               >
                 <span style={{ fontSize: 11, fontWeight: 700 }}>FIT</span>
               </button>
