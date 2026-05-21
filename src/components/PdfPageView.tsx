@@ -122,7 +122,11 @@ export default function PdfPageView({
         {error && <div className="page-error">ページの表示に失敗しました</div>}
       </div>
       <div className="page-number">{pageNumber} / {totalPages}</div>
-      {hideForPrint && <div className="print-no">印刷対象外</div>}
+      {hideForPrint && (
+        <div className="print-no">
+          <span className="print-no-pill">印刷対象外</span>
+        </div>
+      )}
       {replacing && (
         <div className="replace-overlay">
           <div className="badge">
