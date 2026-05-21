@@ -130,6 +130,45 @@ export default function App() {
 
   const docById = useCallback((id: string) => docs.find((d) => d.id === id), [docs]);
 
+  // Smart fit: fit the current page so its longer side hugs the viewer edge.
+  // Portrait pages → fit height (page bottom/top aligned). Landscape → fit width.
+  const fitCurrentPage = useCallback(async () => {
+    if (slots.length === 0) return;
+    const slot = slots[Math.max(0, currentPage - 1)];
+    if (!slot) return;
+    const effective = slot.replacedBy ?? slot;
+    const doc = docById(effective.srcDocId);
+    if (!doc) return;
+    try {
+      const page = await doc.pdf.getPage(effective.srcPageIndex + 1);
+      const userRot = slot.rotation ?? 0;
+      const finalRot = ((((page.rotate ?? 0) + userRot) % 360) + 360) % 360;
+      const vp = page.getViewport({ scale: 1, rotation: finalRot });
+      const pw = vp.width;
+      const ph = vp.height;
+      page.cleanup();
+
+      const viewerEl = scrollRef.current;
+      const viewerH = viewerEl ? viewerEl.clientHeight : window.innerHeight - 240;
+      // Reserve breathing room (top mode-hint banner + page bottom margin)
+      const usableH = Math.max(200, viewerH - 80);
+
+      let target: number;
+      if (pw >= ph) {
+        // Landscape: fit the viewer width exactly.
+        target = 100;
+      } else {
+        // Portrait: shrink so page height ≈ viewer height.
+        target = (usableH * pw) / (viewerWidth * ph) * 100;
+      }
+      target = Math.round(target / ZOOM_STEP) * ZOOM_STEP;
+      target = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, target));
+      setZoom(target);
+    } catch (e) {
+      console.error("fit failed", e);
+    }
+  }, [slots, currentPage, docById, viewerWidth]);
+
   // -- File loading
   const ingestFiles = useCallback(async (files: FileList | File[] | null, opts?: { replaceCurrent?: boolean }) => {
     if (!files) return;
@@ -750,6 +789,13 @@ export default function App() {
                 disabled={zoom === ZOOM_DEFAULT}
               >
                 <span style={{ fontSize: 11, fontWeight: 600 }}>100%</span>
+              </button>
+              <button
+                onClick={fitCurrentPage}
+                className="tt zoom-fit zoom-smart"
+                data-tt="現在のページに自動フィット (縦は高さ・横は幅)"
+              >
+                <span style={{ fontSize: 11, fontWeight: 700 }}>FIT</span>
               </button>
             </div>
           </>
