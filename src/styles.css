@@ -480,18 +480,47 @@ input, select { font: inherit; }
   gap: 8px;
 }
 .replace-picker .picker-head strong { color: #a8761f; font-weight: 700; }
-.picker-head-actions { display: flex; align-items: center; gap: 6px; }
-.picker-add {
-  border: 1px solid var(--line);
-  background: white;
-  color: var(--c-honey-deep);
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 11px; font-weight: 600;
+
+/* Drop / paste pool inside the replace picker */
+.replace-drop {
+  display: flex; align-items: center; gap: 12px;
+  border: 1.5px dashed rgba(168,118,31,0.45);
+  background: linear-gradient(180deg, rgba(253,246,228,0.5), rgba(253,246,228,0.25));
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: #a8761f;
   cursor: pointer;
-  display: inline-flex; align-items: center; gap: 4px;
+  transition: 160ms ease;
+  user-select: none;
 }
-.picker-add:hover { background: var(--c-honey-1); }
+.replace-drop:hover, .replace-drop.over {
+  background: linear-gradient(180deg, rgba(253,230,168,0.7), rgba(244,200,115,0.35));
+  border-color: rgba(168,118,31,0.7);
+  transform: translateY(-1px);
+}
+.replace-drop .rd-ic {
+  width: 30px; height: 30px; border-radius: 9px;
+  background: linear-gradient(140deg, #fde6a8, #f4c873);
+  color: white;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  box-shadow: inset 0 -1px 0 rgba(168,118,31,0.18), 0 4px 10px -4px rgba(244,200,115,0.5);
+}
+.replace-drop .rd-text {
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+.replace-drop .rd-text strong {
+  font-size: 12px; font-weight: 700; color: #a8761f;
+}
+.replace-drop .rd-text span {
+  font-size: 10.5px; color: #c69342;
+  font-weight: 500;
+}
+
+.picker-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
 .picker-doc-pill {
   border: 1px solid var(--line);
   background: white;

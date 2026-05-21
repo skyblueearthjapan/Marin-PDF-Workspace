@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const hmrHost = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+  .process?.env?.VITE_HMR_HOST;
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -9,8 +12,8 @@ export default defineConfig({
     strictPort: true,
     open: false,
     allowedHosts: true,       // Tailscale Funnel ホスト名を許可 (403 防止)
-    hmr: process.env.VITE_HMR_HOST
-      ? { protocol: "wss", host: process.env.VITE_HMR_HOST, clientPort: 443 }
+    hmr: hmrHost
+      ? { protocol: "wss", host: hmrHost, clientPort: 443 }
       : false,                // Funnel 経由では HMR を無効化 (ERR_SSL_PROTOCOL_ERROR 防止)
   },
   optimizeDeps: {

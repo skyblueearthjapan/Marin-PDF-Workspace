@@ -21,9 +21,18 @@ const MODES: { id: ModeId; label: string; icon: "view" | "merge" | "split" | "pr
 
 const ACCENTS = ["#f5a3b3", "#fbbb98", "#8ed8b1", "#b8a4f5", "#f4c873"];
 
+interface Snapshot {
+  docs: DocSource[];
+  slots: PageSlot[];
+}
+
+const HISTORY_LIMIT = 30;
+
 export default function App() {
   const [docs, setDocs] = useState<DocSource[]>([]);
   const [slots, setSlots] = useState<PageSlot[]>([]);
+  const [history, setHistory] = useState<Snapshot[]>([]);
+  const [future, setFuture] = useState<Snapshot[]>([]);
   const [mode, setMode] = useState<ModeId>("view");
   const [zoom, setZoom] = useState<ZoomPercent>(ZOOM_DEFAULT);
 
@@ -60,6 +69,63 @@ export default function App() {
     setTimeout(() => setToasts((t) => t.filter((m) => m.id !== id)), 2600);
   }, []);
 
+  // -- Undo / Redo ---------------------------------------------------------
+  const pushHistory = useCallback(() => {
+    setHistory((h) => {
+      const next = [...h, { docs, slots }];
+      return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next;
+    });
+    setFuture([]);
+  }, [docs, slots]);
+
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      setFuture((f) => [{ docs, slots }, ...f].slice(0, HISTORY_LIMIT));
+      setDocs(prev.docs);
+      setSlots(prev.slots);
+      return h.slice(0, -1);
+    });
+    showToast("1つ前の状態に戻しました");
+  }, [docs, slots, showToast]);
+
+  const redo = useCallback(() => {
+    setFuture((f) => {
+      if (f.length === 0) return f;
+      const next = f[0];
+      setHistory((h) => [...h, { docs, slots }].slice(-HISTORY_LIMIT));
+      setDocs(next.docs);
+      setSlots(next.slots);
+      return f.slice(1);
+    });
+    showToast("やり直しました");
+  }, [docs, slots, showToast]);
+
+  const canUndo = history.length > 0;
+  const canRedo = future.length > 0;
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z = redo
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const k = e.key.toLowerCase();
+      if (k === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) undo();
+      } else if (k === "y" || (k === "z" && e.shiftKey)) {
+        e.preventDefault();
+        if (canRedo) redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo, canUndo, canRedo]);
+
   const docById = useCallback((id: string) => docs.find((d) => d.id === id), [docs]);
 
   // -- File loading
@@ -87,6 +153,7 @@ export default function App() {
           accent: ACCENTS[(docs.length + added.length) % ACCENTS.length],
         });
       }
+      pushHistory();
       setDocs((prev) => [...prev, ...added]);
       if (opts?.replaceCurrent || slots.length === 0) {
         const first = added[0];
@@ -244,6 +311,7 @@ export default function App() {
       if (!d) continue;
       for (let i = 0; i < d.pageCount; i++) newSlots.push({ srcDocId: did, srcPageIndex: i });
     }
+    pushHistory();
     setSlots(newSlots);
     setMode("view");
     showToast(`${mergeOrder.length} ファイル / ${newSlots.length} ページを結合しました`);
@@ -329,6 +397,7 @@ export default function App() {
 
   const applyReplace = (srcDocId: string, srcPageIndex: number) => {
     if (replaceTarget == null) return;
+    pushHistory();
     setSlots((prev) => {
       const next = prev.slice();
       next[replaceTarget] = { ...next[replaceTarget], replacedBy: { srcDocId, srcPageIndex } };
@@ -342,6 +411,7 @@ export default function App() {
 
   const deleteAll = () => {
     if (!confirm("読み込んだPDFをすべて破棄しますか?")) return;
+    pushHistory();
     setDocs([]);
     setSlots([]);
     setMergeOrder([]);
@@ -349,7 +419,7 @@ export default function App() {
     setPrintOff(new Set());
     setReplaceTarget(null);
     setMode("view");
-    showToast("ファイルを削除しました");
+    showToast("ファイルを削除しました (Ctrl+Z で復元可)");
   };
 
   // -- Paste (Ctrl+V / Cmd+V) anywhere in the app
@@ -431,6 +501,22 @@ export default function App() {
         </div>
         <div className="top-spacer" />
         <div className="top-meta">
+          <button
+            className="icon-btn tt"
+            data-tt="元に戻す (Ctrl+Z)"
+            onClick={undo}
+            disabled={!canUndo}
+          >
+            <Icon name="undo" className="ic ic-sm" />
+          </button>
+          <button
+            className="icon-btn tt"
+            data-tt="やり直し (Ctrl+Y)"
+            onClick={redo}
+            disabled={!canRedo}
+          >
+            <Icon name="redo" className="ic ic-sm" />
+          </button>
           {hasFile && (
             <button className="delete-btn tt" data-tt="ファイルを削除" onClick={deleteAll}>
               <Icon name="trash" className="ic ic-sm" />削除

@@ -7,41 +7,66 @@ interface Props {
   docs: DocSource[];
   onPick: (srcDocId: string, srcPageIndex: number) => void;
   onCancel: () => void;
-  onAddFiles: (files: FileList | null) => void;
+  onAddFiles: (files: FileList | File[] | null) => void;
 }
 
 export default function ReplacePicker({ docs, onPick, onCancel, onAddFiles }: Props) {
   const fileInput = useRef<HTMLInputElement | null>(null);
+  const prevLenRef = useRef(docs.length);
   const [pickedDocId, setPickedDocId] = useState<string>(docs[0]?.id ?? "");
+  const [dropOver, setDropOver] = useState(false);
+
+  // Auto-select the newly-added doc when docs grows.
   useEffect(() => {
-    if (!docs.find((d) => d.id === pickedDocId) && docs[0]) setPickedDocId(docs[0].id);
+    if (docs.length > prevLenRef.current && docs.length > 0) {
+      setPickedDocId(docs[docs.length - 1].id);
+    } else if (!docs.find((d) => d.id === pickedDocId) && docs[0]) {
+      setPickedDocId(docs[0].id);
+    }
+    prevLenRef.current = docs.length;
   }, [docs, pickedDocId]);
+
   const doc = docs.find((d) => d.id === pickedDocId);
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropOver(false);
+    onAddFiles(e.dataTransfer.files);
+  };
 
   return (
     <div className="replace-picker">
       <div className="picker-head">
         <div><strong>差し替え後のページを選択</strong> ・ ファイルから選びます</div>
-        <div className="picker-head-actions">
-          <button
-            className="picker-add"
-            onClick={() => fileInput.current?.click()}
-          >
-            <Icon name="upload" className="ic ic-sm" />
-            ファイル追加
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/pdf"
-            multiple
-            style={{ display: "none" }}
-            onChange={(e) => onAddFiles(e.target.files)}
-          />
-          <button className="icon-btn" onClick={onCancel}><Icon name="close" className="ic ic-sm" /></button>
-        </div>
+        <button className="icon-btn" onClick={onCancel} aria-label="閉じる">
+          <Icon name="close" className="ic ic-sm" />
+        </button>
       </div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+
+      <div
+        className={`replace-drop${dropOver ? " over" : ""}`}
+        onClick={() => fileInput.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropOver(true); }}
+        onDragLeave={(e) => { e.stopPropagation(); setDropOver(false); }}
+        onDrop={onDrop}
+      >
+        <div className="rd-ic"><Icon name="upload" className="ic ic-sm" /></div>
+        <div className="rd-text">
+          <strong>差替用 PDF をドロップ</strong>
+          <span>クリックして選択 / Ctrl+V で貼り付け も可</span>
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/pdf"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => onAddFiles(e.target.files)}
+        />
+      </div>
+
+      <div className="picker-tabs">
         {docs.map((d) => (
           <button
             key={d.id}

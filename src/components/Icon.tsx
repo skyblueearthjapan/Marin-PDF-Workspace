@@ -4,7 +4,8 @@ export type IconName =
   | "view" | "merge" | "split" | "print" | "replace"
   | "plus" | "check" | "upload" | "download" | "scissor"
   | "arrowRight" | "arrowLeft" | "zoomIn" | "zoomOut" | "rotate"
-  | "settings" | "help" | "trash" | "close" | "grip" | "search";
+  | "settings" | "help" | "trash" | "close" | "grip" | "search"
+  | "undo" | "redo";
 
 interface Props {
   name: IconName;
@@ -42,6 +43,8 @@ export default function Icon({ name, className = "ic", style }: Props) {
     close: <><path d="M6 6l12 12M18 6 6 18" {...common}/></>,
     grip: <><circle cx="9" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1" fill="currentColor" stroke="none"/></>,
     search: <><circle cx="11" cy="11" r="6" {...common}/><path d="m20 20-3.5-3.5" {...common}/></>,
+    undo: <><path d="M9 14l-4-4 4-4" {...common}/><path d="M5 10h9a5 5 0 0 1 0 10h-2" {...common}/></>,
+    redo: <><path d="M15 14l4-4-4-4" {...common}/><path d="M19 10h-9a5 5 0 0 0 0 10h2" {...common}/></>,
   };
   return (
     <svg viewBox="0 0 24 24" className={className} style={style} aria-hidden="true">
