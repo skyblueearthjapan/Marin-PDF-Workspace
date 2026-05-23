@@ -13,8 +13,22 @@ export default defineConfig({
     open: false,
     allowedHosts: true,       // Tailscale Funnel ホスト名を許可 (403 防止)
     hmr: hmrHost
-      ? { protocol: "wss", host: hmrHost, clientPort: 443 }
+      ? { protocol: "wss", host: hmrHost, clientPort: 443, overlay: false }
       : false,                // Funnel 経由では HMR を無効化 (ERR_SSL_PROTOCOL_ERROR 防止)
+    // VPSコンテナでは .git/ もボリュームマウントされるため、git pull で
+    // 新しい objects が書き込まれると Vite が .git/objects/* (バイナリ) を
+    // JS としてパースしようとしてオーバーレイエラーを出すことがある。
+    // 監視対象から外す + (HMR有効時の) overlay も常時 off にする。
+    watch: {
+      ignored: [
+        "**/.git/**",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/.omc/**",
+        "**/_design/**",
+        "**/参考/**",
+      ],
+    },
   },
   optimizeDeps: {
     include: ["pdf-lib", "pdfjs-dist", "jszip"],
