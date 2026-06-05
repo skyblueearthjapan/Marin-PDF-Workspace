@@ -1,6 +1,6 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
-export type ModeId = "view" | "merge" | "split" | "print" | "replace" | "rotate";
+export type ModeId = "view" | "merge" | "split" | "print" | "replace" | "rotate" | "arrange";
 
 export interface DocSource {
   id: string;

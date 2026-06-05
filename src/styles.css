@@ -190,6 +190,7 @@ input, select { font: inherit; }
 }
 
 .mode-tab.m-view    { --c1:#efece8; --c2:#c8c3bd; --c-deep:#57534e; }
+.mode-tab.m-arrange { --c1:#bfe3ff; --c2:#7cc0f5; --c-deep:#2b6aa0; }
 .mode-tab.m-merge   { --c1:#fed7c0; --c2:#fbbb98; --c-deep:#c2664b; }
 .mode-tab.m-split   { --c1:#c4eed8; --c2:#8ed8b1; --c-deep:#427a5c; }
 .mode-tab.m-print   { --c1:#d9ceff; --c2:#b8a4f5; --c-deep:#6b4fb8; }
@@ -739,6 +740,71 @@ input, select { font: inherit; }
   color: white;
 }
 
+/* ====== Arrange mode (page reorder/delete in the thumb pane) ====== */
+.thumb-card.arranging {
+  cursor: grab;
+  padding-right: 30px;
+  border-color: rgba(124,192,245,0.28);
+  background: rgba(191,227,255,0.10);
+}
+.thumb-card.arranging:hover { background: rgba(191,227,255,0.22); }
+.thumb-card.arranging:active { cursor: grabbing; }
+.thumb-card.arranging.dragging {
+  opacity: 0.45;
+  border-style: dashed;
+  border-color: var(--c-blue-2, #7cc0f5);
+}
+.thumb-card .thumb-grip {
+  position: absolute; left: 2px; top: 50%; transform: translateY(-50%);
+  color: var(--ink-300);
+  display: grid; place-items: center;
+  pointer-events: none;
+}
+.thumb-card.arranging { grid-template-columns: 52px 1fr; }
+/* Let the card own the drag — stop the inner image/thumb from starting its own
+   native image-drag and from swallowing the dragstart. */
+.thumb-card.arranging .mini-page-thumb,
+.thumb-card.arranging .thumb-img,
+.thumb-card.arranging .meta {
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* Drop indicator line between cards while dragging */
+.thumb-drop-line {
+  height: 3px; margin: 2px 6px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #bfe3ff, #7cc0f5);
+  box-shadow: 0 0 0 1px rgba(124,192,245,0.4);
+}
+
+/* ▲▼ / delete cluster on each arrange card */
+.thumb-arrange-actions {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 2px;
+  z-index: 2;
+}
+.thumb-arrange-actions .taa-btn {
+  width: 20px; height: 16px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 4px;
+  font-size: 9px; line-height: 1;
+  color: var(--ink-500);
+  cursor: pointer;
+  transition: 120ms ease;
+}
+.thumb-arrange-actions .taa-btn:hover:not(:disabled) {
+  border-color: #7cc0f5; color: #2b6aa0; background: #f2f9ff;
+}
+.thumb-arrange-actions .taa-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.thumb-arrange-actions .taa-btn.del { color: var(--c-rose-deep, #b04356); }
+.thumb-arrange-actions .taa-btn.del:hover {
+  border-color: #f5a3b3; color: #b04356; background: #fff3f5;
+}
+
 .tp-empty {
   padding: 20px;
   font-size: 12px; color: var(--ink-500);
@@ -877,6 +943,20 @@ input, select { font: inherit; }
     0 8px 20px -8px rgba(245,163,179,0.55);
 }
 .btn.rotate:hover { filter: brightness(1.02); transform: translateY(-0.5px); }
+
+.btn.arrange {
+  background: linear-gradient(180deg, #bfe3ff 0%, #7cc0f5 100%);
+  color: #2b6aa0;
+  font-weight: 600;
+  border-color: rgba(43,106,160,0.18);
+  box-shadow:
+    inset 0 0.5px 0 rgba(255,255,255,0.7),
+    inset 0 -1px 0 rgba(43,106,160,0.12),
+    0 1px 2px rgba(43,106,160,0.08),
+    0 8px 20px -8px rgba(124,192,245,0.55);
+}
+.btn.arrange:hover { filter: brightness(1.02); transform: translateY(-0.5px); }
+.btn.arrange:disabled { opacity: 0.4; cursor: not-allowed; filter: none; transform: none; }
 
 .btn.ghost {
   background: transparent;

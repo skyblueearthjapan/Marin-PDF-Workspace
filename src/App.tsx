@@ -11,8 +11,9 @@ import { loadPdf } from "./pdf/renderer";
 import { buildComposite, buildSplitSegments, downloadBlob, downloadBytes, zipSegments } from "./pdf/operations";
 import { printPdfBytes } from "./pdf/print";
 
-const MODES: { id: ModeId; label: string; icon: "view" | "merge" | "split" | "print" | "replace" | "rotate" }[] = [
+const MODES: { id: ModeId; label: string; icon: "view" | "merge" | "split" | "print" | "replace" | "rotate" | "arrange" }[] = [
   { id: "view",    label: "閲覧", icon: "view" },
+  { id: "arrange", label: "整列", icon: "arrange" },
   { id: "merge",   label: "結合", icon: "merge" },
   { id: "split",   label: "分割", icon: "split" },
   { id: "print",   label: "印刷", icon: "print" },
@@ -45,6 +46,7 @@ export default function App() {
   const [printOff, setPrintOff] = useState<Set<number>>(new Set());
   const [replaceTarget, setReplaceTarget] = useState<number | null>(null);
   const [rotateSelected, setRotateSelected] = useState<Set<number>>(new Set());
+  const [dragPageIdx, setDragPageIdx] = useState<number | null>(null);
 
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -201,13 +203,17 @@ export default function App() {
   }, [slots, currentPage, docById, viewerWidth, zoom, setZoomPreservePage]);
 
   // -- File loading
-  const ingestFiles = useCallback(async (files: FileList | File[] | null, opts?: { replaceCurrent?: boolean }) => {
+  const ingestFiles = useCallback(async (files: FileList | File[] | null, opts?: { appendToSlots?: boolean }) => {
     if (!files) return;
     const list = Array.from(files).filter((f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
     if (list.length === 0) {
       showToast("PDF ファイルを選択してください");
       return;
     }
+    // Whether the new pages should be appended to the working composite.
+    // Main drop / paste / file-select → true (load every page of every file).
+    // Merge-queue add / replace-source add → false (only register the doc).
+    const appendToSlots = opts?.appendToSlots ?? true;
     setBusy("PDFを読み込み中…");
     try {
       const added: DocSource[] = [];
@@ -227,11 +233,16 @@ export default function App() {
       }
       pushHistory();
       setDocs((prev) => [...prev, ...added]);
-      if (opts?.replaceCurrent || slots.length === 0) {
-        const first = added[0];
-        setSlots(enumeratePages(first));
+      const newPages = added.flatMap(enumeratePages);
+      if (slots.length === 0) {
+        // First content: show every page of every dropped file.
+        setSlots(newPages);
+      } else if (appendToSlots) {
+        // Append all pages of all newly-dropped files to the composite.
+        setSlots((prev) => [...prev, ...newPages]);
       }
-      showToast(`${list.length} 件のPDFを読み込みました`);
+      const totalPages = added.reduce((n, d) => n + d.pageCount, 0);
+      showToast(`${list.length} 件 / ${totalPages} ページのPDFを読み込みました`);
     } catch (e) {
       console.error(e);
       showToast("PDFの読み込みに失敗しました");
@@ -254,6 +265,7 @@ export default function App() {
     if (mode === "print") setPrintOff(new Set());
     if (mode === "replace") setReplaceTarget(null);
     if (mode === "rotate") setRotateSelected(new Set());
+    if (mode === "arrange") setDragPageIdx(null);
   }, [mode]);
 
   // -- Track viewer width (for full-fit PDF rendering)
@@ -405,6 +417,22 @@ export default function App() {
     }
   };
 
+  const confirmArrange = async () => {
+    if (!hasFile) return;
+    setBusy("PDFを生成中…");
+    try {
+      const bytes = await buildComposite({ docs, slots });
+      downloadBytes(bytes, deriveFilename("merged"));
+      showToast(`${slots.length} ページを1つのPDFに結合しました`);
+      setMode("view");
+    } catch (e) {
+      console.error(e);
+      showToast("結合に失敗しました");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const ZIP_THRESHOLD = 5;
   const confirmSplit = async () => {
     if (splitAfter.length === 0) { showToast("分割位置を指定してください"); return; }
@@ -522,6 +550,45 @@ export default function App() {
     }));
     showToast(`${rotateSelected.size > 0 ? rotateSelected.size + "ページ" : "全ページ"}の回転をリセットしました`);
   };
+
+  // -- Arrange: reorder & delete individual pages
+  const movePage = useCallback((from: number, to: number) => {
+    setSlots((prev) => {
+      if (from === to || from < 0 || from >= prev.length) return prev;
+      const clampedTo = Math.max(0, Math.min(prev.length - 1, to));
+      if (from === clampedTo) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(clampedTo, 0, moved);
+      return next;
+    });
+  }, []);
+
+  // Drop `from` so it lands *before* slot index `before` (before === length ⇒ end).
+  const movePageBefore = useCallback((from: number, before: number) => {
+    if (from === before || from === before - 1) return;
+    pushHistory();
+    setSlots((prev) => {
+      if (from < 0 || from >= prev.length) return prev;
+      const next = prev.slice();
+      const [moved] = next.splice(from, 1);
+      const target = before > from ? before - 1 : before;
+      next.splice(Math.max(0, Math.min(next.length, target)), 0, moved);
+      return next;
+    });
+  }, [pushHistory]);
+
+  const nudgePage = useCallback((idx: number, dir: -1 | 1) => {
+    pushHistory();
+    movePage(idx, idx + dir);
+  }, [movePage, pushHistory]);
+
+  const deletePage = useCallback((idx: number) => {
+    pushHistory();
+    setSlots((prev) => prev.filter((_, i) => i !== idx));
+    // Keep selection-ish state coherent
+    setReplaceTarget((t) => (t === idx ? null : t));
+  }, [pushHistory]);
 
   const deleteAll = () => {
     if (!confirm("読み込んだPDFをすべて破棄しますか?")) return;
@@ -654,7 +721,7 @@ export default function App() {
           onRemove={(id) => setMergeOrder((p) => p.filter((x) => x !== id))}
           onClear={() => setMergeOrder([])}
           onReorder={(next) => setMergeOrder(next)}
-          onPickFiles={(f) => ingestFiles(f)}
+          onPickFiles={(f) => ingestFiles(f, { appendToSlots: false })}
         />
       )}
 
@@ -705,6 +772,7 @@ export default function App() {
               printCount={slots.length - printOff.size}
               replaceTarget={replaceTarget}
               rotateCount={rotateSelected.size}
+              pageCount={slots.length}
             />
             <div className="viewer-scroll" ref={scrollRef}>
               <div
@@ -773,7 +841,7 @@ export default function App() {
                           docs={docs}
                           onPick={applyReplace}
                           onCancel={() => setReplaceTarget(null)}
-                          onAddFiles={(f) => ingestFiles(f)}
+                          onAddFiles={(f) => ingestFiles(f, { appendToSlots: false })}
                         />
                       )}
 
@@ -874,6 +942,12 @@ export default function App() {
           sourceLabelFor={sourceLabelFor}
           listRef={thumbListRef}
           onListScroll={onThumbListScroll}
+          dragPageIdx={dragPageIdx}
+          onDragStartPage={setDragPageIdx}
+          onDragEndPage={() => setDragPageIdx(null)}
+          onDropBefore={movePageBefore}
+          onNudgePage={nudgePage}
+          onDeletePage={deletePage}
         />
       ) : (
         <div className="thumbpane">
@@ -898,6 +972,7 @@ export default function App() {
         onConfirmMerge={confirmMerge}
         onConfirmSplit={confirmSplit}
         onConfirmPrint={() => setShowPrintModal(true)}
+        onConfirmArrange={confirmArrange}
         onDownload={downloadCurrent}
         onCancel={() => setMode("view")}
         replaceTarget={replaceTarget}
@@ -950,12 +1025,13 @@ function PageBlock({ children }: { index: number; children: React.ReactNode }) {
 }
 
 function ModeHint({
-  mode, mergeCount, splitCount, printCount, replaceTarget, rotateCount,
+  mode, mergeCount, splitCount, printCount, replaceTarget, rotateCount, pageCount,
 }: {
-  mode: ModeId; mergeCount: number; splitCount: number; printCount: number; replaceTarget: number | null; rotateCount: number;
+  mode: ModeId; mergeCount: number; splitCount: number; printCount: number; replaceTarget: number | null; rotateCount: number; pageCount: number;
 }) {
   if (mode === "view") return null;
-  const map: Record<Exclude<ModeId, "view">, { label: string; icon: "merge" | "split" | "print" | "replace" | "rotate" }> = {
+  const map: Record<Exclude<ModeId, "view">, { label: string; icon: "merge" | "split" | "print" | "replace" | "rotate" | "arrange" }> = {
+    arrange: { label: `サムネイルをドラッグ、または ▲▼ でページを並べ替え ・ ✕ で削除 (${pageCount} ページ)`, icon: "arrange" },
     merge:   { label: `結合キューにファイルを追加して順序を決めます (${mergeCount} 件選択中)`, icon: "merge" },
     split:   { label: `ページの間にカーソルを合わせて分割位置を指定 (${splitCount} 箇所)`, icon: "split" },
     print:   { label: `印刷したくないページをクリックして除外 (${printCount} ページが印刷対象)`, icon: "print" },
@@ -988,7 +1064,7 @@ function SplitMarker({ armed, onClick }: { armed: boolean; onClick: () => void }
 
 function ActionBar({
   hasFile, mode, mergeOrder, splitAfter, printOff, pageCount, currentPage,
-  onConfirmMerge, onConfirmSplit, onConfirmPrint, onDownload, onCancel, replaceTarget,
+  onConfirmMerge, onConfirmSplit, onConfirmPrint, onConfirmArrange, onDownload, onCancel, replaceTarget,
   onSelectAllPrint, onClearAllPrint, onSplitAll, onSplitClear,
   rotateSelected, onRotate, onRotateReset, onRotateSelectAll, onRotateClearSelection,
 }: {
@@ -1002,6 +1078,7 @@ function ActionBar({
   onConfirmMerge: () => void;
   onConfirmSplit: () => void;
   onConfirmPrint: () => void;
+  onConfirmArrange: () => void;
   onDownload: () => void;
   onCancel: () => void;
   replaceTarget: number | null;
@@ -1017,6 +1094,7 @@ function ActionBar({
 }) {
   const themes: Record<ModeId, { bg: string; color: string }> = {
     view:    { bg: "linear-gradient(140deg,#efece8,#c8c3bd)", color: "#57534e" },
+    arrange: { bg: "linear-gradient(140deg,#bfe3ff,#7cc0f5)", color: "#2b6aa0" },
     merge:   { bg: "linear-gradient(140deg,#fed7c0,#fbbb98)", color: "#c2664b" },
     split:   { bg: "linear-gradient(140deg,#c4eed8,#8ed8b1)", color: "#427a5c" },
     print:   { bg: "linear-gradient(140deg,#d9ceff,#b8a4f5)", color: "#6b4fb8" },
@@ -1047,6 +1125,18 @@ function ActionBar({
     </div>
   );
 
+  if (mode === "arrange") {
+    return (
+      <div className="actionbar">
+        <Lead kind="arrange" label="整列モード" body={<>{pageCount} ページを並べ替え</>} />
+        <div className="action-spacer" />
+        <button className="btn ghost" onClick={onCancel}>キャンセル</button>
+        <button className="btn arrange" disabled={pageCount === 0} onClick={onConfirmArrange}>
+          <Icon name="merge" className="ic" />結合確定
+        </button>
+      </div>
+    );
+  }
   if (mode === "view") {
     return (
       <div className="actionbar">

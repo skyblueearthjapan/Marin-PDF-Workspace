@@ -6,7 +6,7 @@ export type IconName =
   | "arrowRight" | "arrowLeft" | "arrowUp" | "arrowDown"
   | "zoomIn" | "zoomOut" | "rotate"
   | "settings" | "help" | "trash" | "close" | "grip" | "search"
-  | "undo" | "redo";
+  | "undo" | "redo" | "arrange";
 
 interface Props {
   name: IconName;
@@ -48,6 +48,7 @@ export default function Icon({ name, className = "ic", style }: Props) {
     search: <><circle cx="11" cy="11" r="6" {...common}/><path d="m20 20-3.5-3.5" {...common}/></>,
     undo: <><path d="M9 14l-4-4 4-4" {...common}/><path d="M5 10h9a5 5 0 0 1 0 10h-2" {...common}/></>,
     redo: <><path d="M15 14l4-4-4-4" {...common}/><path d="M19 10h-9a5 5 0 0 0 0 10h2" {...common}/></>,
+    arrange: <><rect x="3" y="4" width="7" height="7" rx="1.5" {...common}/><rect x="14" y="4" width="7" height="7" rx="1.5" {...common}/><rect x="3" y="15" width="7" height="5" rx="1.5" {...common}/><path d="M17.5 14v6M14.5 17l3 3 3-3" {...common}/></>,
   };
   return (
     <svg viewBox="0 0 24 24" className={className} style={style} aria-hidden="true">
