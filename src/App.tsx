@@ -417,20 +417,13 @@ export default function App() {
     }
   };
 
-  const confirmArrange = async () => {
+  // Arrange の確定はダウンロードしない。並べ替え/削除は操作の都度すでに slots に
+  // 反映されているので、ここでは「整列を確定して閲覧モードへ戻す」だけにする。
+  // ファイル出力は明示的な「ダウンロード」ボタンからのみ行う(勝手なDLを避ける)。
+  const confirmArrange = () => {
     if (!hasFile) return;
-    setBusy("PDFを生成中…");
-    try {
-      const bytes = await buildComposite({ docs, slots });
-      downloadBytes(bytes, deriveFilename("merged"));
-      showToast(`${slots.length} ページを1つのPDFに結合しました`);
-      setMode("view");
-    } catch (e) {
-      console.error(e);
-      showToast("結合に失敗しました");
-    } finally {
-      setBusy(null);
-    }
+    setMode("view");
+    showToast(`${slots.length} ページの並びを確定しました`);
   };
 
   const ZIP_THRESHOLD = 5;
@@ -1132,7 +1125,7 @@ function ActionBar({
         <div className="action-spacer" />
         <button className="btn ghost" onClick={onCancel}>キャンセル</button>
         <button className="btn arrange" disabled={pageCount === 0} onClick={onConfirmArrange}>
-          <Icon name="merge" className="ic" />結合確定
+          <Icon name="check" className="ic" />整列完了
         </button>
       </div>
     );
