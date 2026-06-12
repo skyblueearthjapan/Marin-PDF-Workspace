@@ -29,6 +29,10 @@ export default defineConfig({
         "**/参考/**",
       ],
     },
+    // 保険: 万が一 .git が見えても配信を拒否し、Vite が中身を解析しないようにする。
+    fs: {
+      deny: ["**/.git/**"],
+    },
   },
   optimizeDeps: {
     include: ["pdf-lib", "pdfjs-dist", "jszip"],

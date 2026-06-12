@@ -10,6 +10,10 @@ services:
     volumes:
       - ./:/app
       - /app/node_modules
+      # .git を匿名ボリュームでマスクし、コンテナから見えなくする。
+      # これがないと git pull/commit で .git/objects/* (バイナリ) が書き込まれた際、
+      # Vite (ポーリング監視) がそれを JS としてパースしようとしてオーバーレイエラーを出す。
+      - /app/.git
     environment:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
